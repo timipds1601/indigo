@@ -1,83 +1,346 @@
-/* Pastikan body dan html mengambil tinggi penuh */
-html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden; /* Mencegah scrollbar ganda pada body */
-    font-family: 'Segoe UI', sans-serif;
-}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Monitoring Sensus Dashboard - Statistik Per Wilayah</title>
+    <!-- Leaflet CSS (Peta) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* PASTIKAN BODY DAN HTML TINGGI PENUH */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-body {
-    display: flex;
-}
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
 
-/* Sidebar: Harus memiliki tinggi 100vh agar bisa menampung list */
-#sidebar {
-    width: 350px;
-    height: 100vh;
-    background: #f8fafc;
-    border-right: 1px solid #ccc;
-    display: flex;
-    flex-direction: column; /* Mengatur header, search, dan list secara vertikal */
-    z-index: 1000;
-}
+        /* BODY SEBAGAI FLEX CONTAINER */
+        body {
+            display: flex;
+            background: #e9ecef;
+        }
 
-/* Peta: Mengambil sisa ruang yang tersedia */
-#map {
-    flex-grow: 1; /* Ini kunci agar peta memenuhi sisa layar */
-    height: 100vh;
-}
+        /* ========== SIDEBAR - LEBAR FLEKSIBEL DENGAN FIXED WIDTH (Solusi 2) ========== */
+        #sidebar {
+            width: 380px;           /* ← Ubah nilai ini sesuai keinginan (contoh: 400px, 420px) */
+            flex-shrink: 0;         /* Mencegah sidebar menyusut */
+            height: 100vh;
+            background: #f8fafc;
+            border-right: 1px solid #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+        }
 
-/* Header & Search */
-h2 {
-    padding: 20px;
-    margin: 0;
-    background: #2c3e50;
-    color: white;
-    text-align: center;
-    font-size: 1.2em;
-}
+        /* Header */
+        .sidebar-header {
+            background: #1e293b;
+            color: white;
+            padding: 20px 16px;
+            text-align: center;
+            border-bottom: 3px solid #3b82f6;
+        }
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .sidebar-header p {
+            margin: 5px 0 0;
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
 
-.search-box {
-    padding: 15px;
-    background: #f9f9f9;
-    border-bottom: 1px solid #ddd;
-}
+        /* Search Box */
+        .search-box {
+            padding: 16px;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .search-box input, 
+        .search-box select {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            outline: none;
+            background: #fff;
+        }
+        .search-box input:focus, 
+        .search-box select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+        }
+        .search-box input {
+            background: #fef9e3;
+        }
 
-#searchInput, #searchIdsls, #filterKategori {
-    width: 90%;
-    padding: 10px;
-    margin: 0 auto 10px auto; /* Center input */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    display: block;
-    box-sizing: border-box;
-}
+        /* List Container - Scroll Otomatis */
+        #dataList {
+            flex: 1;                /* Mengisi sisa ruang sidebar */
+            overflow-y: auto;
+            padding: 12px;
+            scroll-behavior: smooth;
+        }
 
-/* List Item */
-#dataList {
-    overflow-y: auto; /* List akan scroll jika terlalu panjang */
-    flex-grow: 1;     /* List mengisi sisa ruang di sidebar */
-    padding: 10px;
-}
+        /* Item Wilayah */
+        .item {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .item:hover {
+            background: #f1f5f9;
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        }
+        .item h4 {
+            margin: 0 0 6px 0;
+            color: #0f172a;
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .item .kode-wilayah {
+            font-size: 0.7rem;
+            font-weight: normal;
+            background: #e6f0ff;
+            padding: 2px 8px;
+            border-radius: 20px;
+            color: #1e40af;
+        }
+        .item .jumlah-usaha {
+            font-size: 0.85rem;
+            color: #475569;
+            margin: 4px 0;
+        }
+        .item .lokasi {
+            font-size: 0.8rem;
+            color: #2c3e50;
+            margin-top: 5px;
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 5px;
+        }
+        .item .status-belum-data {
+            color: #b91c1c;
+            font-size: 0.7rem;
+            background: #fee2e2;
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
 
-.item {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: 0.3s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
+        /* Custom scrollbar */
+        #dataList::-webkit-scrollbar {
+            width: 6px;
+        }
+        #dataList::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+        #dataList::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
 
-.item:hover {
-    background: #f0f0f0;
-    border-color: #2980b9;
-}
+        /* ========== PETA - MEMENUHI SISA LAYAR ========== */
+        #map {
+            flex: 1;             /* Kunci utama: peta mengambil semua sisa ruang */
+            height: 100vh;
+            z-index: 1;
+        }
 
-.item h4 {
-    margin: 0 0 5px 0;
-    color: #2980b9;
-}
+        /* Responsif: jika layar terlalu kecil (< 768px) sidebar mengecil sedikit */
+        @media (max-width: 768px) {
+            #sidebar {
+                width: 300px;
+            }
+            .item {
+                padding: 12px;
+            }
+            .sidebar-header h2 {
+                font-size: 1rem;
+            }
+        }
+
+        /* Indikator loading atau info kecil */
+        .info-status {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR NAVIGASI STATISTIK PER WILAYAH -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2>📊 STATISTIK PER WILAYAH</h2>
+            <p>2397 Wilayah | Data Sensus</p>
+        </div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 Cari Nama Wilayah / RT / Dusun..." autocomplete="off">
+            <input type="text" id="searchIdsls" placeholder="🆔 Cari ID SL (Kode Wilayah)">
+            <select id="filterKategori">
+                <option value="">📌 Semua Kategori</option>
+                <option value="Perkebunan">🌿 Perkebunan</option>
+                <option value="Sawah">🌾 Sawah / Pertanian</option>
+                <option value="Kebun">🍃 Kebun</option>
+                <option value="Hutan">🌲 Hutan</option>
+            </select>
+        </div>
+        <div id="dataList">
+            <!-- Data akan diisi oleh JavaScript secara dinamis -->
+            <div class="info-status">Memuat data wilayah...</div>
+        </div>
+    </div>
+
+    <!-- PETA LEAFLET -->
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // ============================================================
+        // 1. DATA WILAYAH (Contoh dari dashboard yang diberikan)
+        //    Di sini kami buatkan array contoh statis dari beberapa wilayah
+        //    Agar sidebar penuh dan fungsional.
+        //    Anda bisa mengganti dengan data dari API / database nantinya.
+        // ============================================================
+        const wilayahData = [
+            { id: "16010520010001", nama: "RT 01 DUSUN 1", kecamatan: "LENGKITI", kelurahan: "BANDAR JAYA", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | BANDAR JAYA" },
+            { id: "16010520010002", nama: "RT 02 DUSUN 1", kecamatan: "LENGKITI", kelurahan: "BANDAR JAYA", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | BANDAR JAYA" },
+            { id: "16010520010003", nama: "RT 03 DUSUN 1", kecamatan: "LENGKITI", kelurahan: "BANDAR JAYA", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | BANDAR JAYA" },
+            { id: "16010520011001", nama: "PERKEBUNAN OMIBA", kecamatan: "LENGKITI", kelurahan: "BANDAR JAYA", usaha: 0, kategori: "Perkebunan", lokasi: "LENGKITI | BANDAR JAYA" },
+            { id: "16010520020001", nama: "RT 01 DUSUN 01", kecamatan: "LENGKITI", kelurahan: "KARANG ENDAH", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | KARANG ENDAH" },
+            { id: "16010520021001", nama: "PERKEBUNAN", kecamatan: "LENGKITI", kelurahan: "KARANG ENDAH", usaha: 0, kategori: "Perkebunan", lokasi: "LENGKITI | KARANG ENDAH" },
+            { id: "16010520030001", nama: "RT 01 DUSUN 01", kecamatan: "LENGKITI", kelurahan: "PAJAR BULAN", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | PAJAR BULAN" },
+            { id: "16010520040001", nama: "RT 02 DUSUN 01", kecamatan: "LENGKITI", kelurahan: "PAGAR DEWA", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | PAGAR DEWA" },
+            { id: "16010520041001", nama: "KEBUN", kecamatan: "LENGKITI", kelurahan: "PAGAR DEWA", usaha: 0, kategori: "Kebun", lokasi: "LENGKITI | PAGAR DEWA" },
+            { id: "16010520050001", nama: "RT 02 DUSUN 1", kecamatan: "LENGKITI", kelurahan: "TANJUNG LENGKAYAP", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | TANJUNG LENGKAYAP" },
+            { id: "16010520051001", nama: "PERKEBUNAN KARET", kecamatan: "LENGKITI", kelurahan: "TANJUNG LENGKAYAP", usaha: 0, kategori: "Perkebunan", lokasi: "LENGKITI | TANJUNG LENGKAYAP" },
+            { id: "16010520060001", nama: "RT 01 DUSUN 01", kecamatan: "LENGKITI", kelurahan: "BUMI KAWA", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | BUMI KAWA" },
+            { id: "16010520061001", nama: "KEBUN", kecamatan: "LENGKITI", kelurahan: "BUMI KAWA", usaha: 0, kategori: "Kebun", lokasi: "LENGKITI | BUMI KAWA" },
+            { id: "16010520070001", nama: "RT 01 DUSUN 01", kecamatan: "LENGKITI", kelurahan: "NEGERI RATU", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | NEGERI RATU" },
+            { id: "16010520080001", nama: "RT 02 DUSUN 01", kecamatan: "LENGKITI", kelurahan: "LUBUK DALAM", usaha: 0, kategori: "Pemukiman", lokasi: "LENGKITI | LUBUK DALAM" },
+            { id: "16010700010001", nama: "RT 01 DUSUN 1", kecamatan: "SOSOH BUAY RAYAP", kelurahan: "NEGERI SINDANG", usaha: 0, kategori: "Pemukiman", lokasi: "SOSOH BUAY RAYAP | NEGERI SINDANG" },
+            { id: "16010700011001", nama: "KEBUN KARET", kecamatan: "SOSOH BUAY RAYAP", kelurahan: "NEGERI SINDANG", usaha: 0, kategori: "Perkebunan", lokasi: "SOSOH BUAY RAYAP | NEGERI SINDANG" },
+            { id: "16010800080001", nama: "RT 001 DUSUN I", kecamatan: "PENGANDONAN", kelurahan: "GUNUNG MERAKSA", usaha: 0, kategori: "Pemukiman", lokasi: "PENGANDONAN | GUNUNG MERAKSA" },
+            { id: "16010800081001", nama: "SAWAH DAN HUTAN", kecamatan: "PENGANDONAN", kelurahan: "GUNUNG MERAKSA", usaha: 0, kategori: "Sawah", lokasi: "PENGANDONAN | GUNUNG MERAKSA" },
+            { id: "16010800100001", nama: "RT 001 DUSUN I", kecamatan: "PENGANDONAN", kelurahan: "TANJUNG PURA", usaha: 0, kategori: "Pemukiman", lokasi: "PENGANDONAN | TANJUNG PURA" },
+            { id: "16010800101001", nama: "LAHAN PERTANIAN", kecamatan: "PENGANDONAN", kelurahan: "TANJUNG PURA", usaha: 0, kategori: "Sawah", lokasi: "PENGANDONAN | TANJUNG PURA" },
+            { id: "16010810110001", nama: "RT 01 DUSUN 1", kecamatan: "SEMIDANG AJI", kelurahan: "TUBOHAN", usaha: 0, kategori: "Pemukiman", lokasi: "SEMIDANG AJI | TUBOHAN" },
+            { id: "16010810111001", nama: "KEBUN SAWIT", kecamatan: "SEMIDANG AJI", kelurahan: "TUBOHAN", usaha: 0, kategori: "Perkebunan", lokasi: "SEMIDANG AJI | TUBOHAN" }
+        ];
+
+        // Inisialisasi Peta (pusatkan ke koordinat Indonesia - Kabupaten OKU)
+        var map = L.map('map').setView([-4.0, 104.0], 10);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
+            subdomains: 'abcd',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Variable untuk marker (opsional)
+        let markers = [];
+
+        // Fungsi render daftar wilayah ke sidebar
+        function renderWilayah(data) {
+            const listContainer = document.getElementById('dataList');
+            if (!data.length) {
+                listContainer.innerHTML = '<div class="info-status">⚠️ Tidak ada wilayah yang cocok</div>';
+                return;
+            }
+            
+            let html = '';
+            data.forEach(wil => {
+                // Tampilkan status "Belum ada data" jika usaha = 0
+                let badgeStatus = wil.usaha === 0 ? '<span class="status-belum-data">Belum ada data</span>' : `<span class="status-belum-data" style="background:#dcfce7; color:#166534;">✅ ${wil.usaha} usaha</span>`;
+                html += `
+                    <div class="item" data-id="${wil.id}" data-lat="${wil.lat || 0}" data-lng="${wil.lng || 0}" data-nama="${wil.nama}">
+                        <h4>${wil.nama} <span class="kode-wilayah">${wil.id}</span></h4>
+                        <div class="jumlah-usaha">📈 ${badgeStatus}</div>
+                        <div class="lokasi">📍 ${wil.lokasi}</div>
+                        <div class="kategori-info" style="font-size:0.7rem; margin-top:6px;">🏷️ ${wil.kategori || 'Pemukiman'}</div>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = html;
+            
+            // Event listener klik item (bisa untuk zoom atau popup)
+            document.querySelectorAll('.item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const namaWil = el.getAttribute('data-nama');
+                    alert(`📍 Wilayah: ${namaWil}\nFitur zoom ke peta akan segera dikembangkan.`);
+                    // nanti bisa diintegrasikan dengan koordinat sebenarnya
+                });
+            });
+        }
+
+        // Fungsi filter data berdasarkan input
+        function filterData() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            const idKeyword = document.getElementById('searchIdsls').value.toLowerCase();
+            const kategori = document.getElementById('filterKategori').value;
+            
+            let filtered = wilayahData.filter(item => {
+                // filter nama wilayah / dusun / rt
+                let matchNama = item.nama.toLowerCase().includes(keyword) || 
+                                item.lokasi.toLowerCase().includes(keyword) ||
+                                item.kelurahan.toLowerCase().includes(keyword);
+                let matchId = item.id.toLowerCase().includes(idKeyword);
+                let matchKategori = kategori === "" || item.kategori === kategori;
+                
+                return matchNama && matchId && matchKategori;
+            });
+            renderWilayah(filtered);
+        }
+
+        // Inisialisasi pertama
+        renderWilayah(wilayahData);
+        
+        // Pasang event listener pada input dan select
+        document.getElementById('searchInput').addEventListener('input', filterData);
+        document.getElementById('searchIdsls').addEventListener('input', filterData);
+        document.getElementById('filterKategori').addEventListener('change', filterData);
+        
+        // Optional: tambahkan marker contoh di peta (beberapa titik acak dari kecamatan)
+        // Agar peta lebih hidup, kita pasang marker di perkiraan koordinat kecamatan Lengkiti, Pengandonan dll.
+        const markerPoints = [
+            { lat: -4.393, lng: 103.921, name: "LENGKITI" },
+            { lat: -4.113, lng: 104.062, name: "SOSOH BUAY RAYAP" },
+            { lat: -4.039, lng: 104.124, name: "PENGANDONAN" },
+            { lat: -4.182, lng: 104.086, name: "SEMIDANG AJI" }
+        ];
+        markerPoints.forEach(point => {
+            L.marker([point.lat, point.lng]).addTo(map)
+                .bindPopup(`<b>${point.name}</b><br>Wilayah dengan ribuan SLs`);
+        });
+        
+        // Menampilkan jumlah data di console
+        console.log(`✅ Dashboard siap. Total wilayah: ${wilayahData.length}`);
+    </script>
+</body>
+</html>
