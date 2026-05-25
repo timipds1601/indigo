@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Monitoring Sensus Dashboard - Resizeable Sidebar</title>
+    <title>Monitoring Sensus - Resizeable List Wilayah</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -11,7 +11,6 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none; /* Mencegah teks terblok saat resize */
         }
 
         html, body {
@@ -23,70 +22,39 @@
         body {
             display: flex;
             background: #e9ecef;
-            position: relative;
         }
 
-        /* ========== SIDEBAR DENGAN RESIZE HANDLE ========== */
+        /* ========== SIDEBAR ========== */
         #sidebar {
-            width: 380px;              /* Lebar awal */
+            width: 380px;
             height: 100vh;
-            background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+            background: #f8fafc;
             border-right: 1px solid #cbd5e1;
             display: flex;
             flex-direction: column;
             z-index: 10;
-            box-shadow: 4px 0 12px rgba(0,0,0,0.08);
+            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
             position: relative;
-            transition: none; /* Hilangkan transisi agar resize terasa responsif */
+            flex-shrink: 0;
         }
 
-        /* Handle resize (garis penarik) */
-        .resize-handle {
-            position: absolute;
-            right: -4px;
-            top: 0;
-            width: 8px;
-            height: 100%;
-            background: transparent;
-            cursor: ew-resize;
-            z-index: 100;
-            transition: background 0.1s;
-        }
-
-        .resize-handle:hover {
-            background: rgba(59, 130, 246, 0.5);
-        }
-
-        .resize-handle:active {
-            background: rgba(59, 130, 246, 0.8);
-        }
-
-        /* Indikator garis saat diresize (opsional) */
-        .resize-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 2px;
-            height: 100%;
-            background: #3b82f6;
-            z-index: 9999;
-            pointer-events: none;
-            display: none;
-            box-shadow: 0 0 8px #3b82f6;
+        /* Area ATAS (Header + Search) - bisa diatur tingginya */
+        .sidebar-top {
+            flex-shrink: 0;
+            overflow: visible;
         }
 
         /* Header Sidebar */
         .sidebar-header {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: white;
-            padding: 20px 16px;
+            padding: 18px 16px;
             text-align: center;
             border-bottom: 3px solid #3b82f6;
-            flex-shrink: 0;
         }
         .sidebar-header h2 {
             margin: 0;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 700;
             display: flex;
             align-items: center;
@@ -95,104 +63,128 @@
             flex-wrap: wrap;
         }
         .sidebar-header p {
-            margin: 6px 0 0;
+            margin: 5px 0 0;
             font-size: 0.7rem;
             opacity: 0.85;
         }
         .badge-total {
             background: #3b82f6;
-            padding: 2px 10px;
+            padding: 2px 8px;
             border-radius: 20px;
             font-size: 0.7rem;
         }
 
-        /* Kotak Pencarian */
+        /* Search Box */
         .search-box {
-            padding: 16px;
+            padding: 14px;
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
-            flex-shrink: 0;
         }
         .search-box input, 
         .search-box select {
             width: 100%;
-            padding: 10px 12px;
-            margin-bottom: 10px;
+            padding: 9px 12px;
+            margin-bottom: 8px;
             border: 1.5px solid #e2e8f0;
             border-radius: 10px;
             font-size: 0.85rem;
-            transition: all 0.2s;
             outline: none;
         }
         .search-box input:focus, 
         .search-box select:focus {
             border-color: #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
         }
 
-        /* LIST WILAYAH - SCROLL OTOMATIS */
+        /* ========== SPLITTER (GARIS PENARIK VERTIKAL) ========== */
+        .splitter {
+            height: 6px;
+            background: #cbd5e1;
+            cursor: ns-resize;
+            flex-shrink: 0;
+            transition: background 0.2s;
+            position: relative;
+            z-index: 20;
+        }
+        .splitter:hover {
+            background: #3b82f6;
+        }
+        .splitter:active {
+            background: #2563eb;
+        }
+        
+        /* Indikator garis saat drag vertikal */
+        .resize-indicator-v {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #3b82f6;
+            z-index: 9999;
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 0 6px #3b82f6;
+        }
+
+        /* ========== AREA BAWAH (LIST WILAYAH) ========== */
         #dataList {
             flex: 1;
             overflow-y: auto;
             padding: 12px;
             scroll-behavior: smooth;
+            min-height: 100px;
         }
 
-        /* Card Item Wilayah */
+        /* Item Wilayah */
         .item {
             background: white;
-            padding: 14px;
-            border-radius: 12px;
+            padding: 12px;
+            border-radius: 10px;
             border: 1px solid #e2e8f0;
             margin-bottom: 10px;
             cursor: pointer;
             transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
         }
         .item:hover {
-            background: #f8fafc;
+            background: #f1f5f9;
             border-color: #3b82f6;
             transform: translateX(3px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         .item h4 {
-            margin: 0 0 6px 0;
+            margin: 0 0 5px 0;
             color: #0f172a;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 700;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
         }
         .item .kode-wilayah {
             font-size: 0.6rem;
-            font-weight: 500;
             background: #e2e8f0;
             padding: 2px 8px;
             border-radius: 20px;
-            color: #1e293b;
             font-family: monospace;
         }
         .item .jumlah-usaha {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: #475569;
-            margin: 5px 0;
+            margin: 4px 0;
         }
         .item .lokasi {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             color: #475569;
-            margin-top: 6px;
-            padding-top: 5px;
+            margin-top: 5px;
+            padding-top: 4px;
             border-top: 1px dashed #cbd5e1;
         }
         .status-belum-data {
             background: #fef3c7;
             color: #b45309;
-            font-size: 0.65rem;
-            font-weight: 600;
-            padding: 2px 10px;
+            font-size: 0.6rem;
+            padding: 2px 8px;
             border-radius: 30px;
             display: inline-block;
         }
@@ -202,7 +194,7 @@
             padding: 2px 8px;
             border-radius: 30px;
             display: inline-block;
-            margin-top: 5px;
+            margin-top: 4px;
         }
 
         /* Scrollbar */
@@ -225,71 +217,79 @@
             z-index: 1;
         }
 
-        /* Tooltip lebar saat resize */
-        .width-tooltip {
+        /* Tooltip tinggi list */
+        .height-tooltip {
             position: fixed;
             bottom: 20px;
             right: 20px;
             background: #1e293b;
             color: white;
-            padding: 5px 12px;
+            padding: 4px 12px;
             border-radius: 20px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-family: monospace;
             z-index: 1000;
             opacity: 0;
             transition: opacity 0.2s;
             pointer-events: none;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-
-        .width-tooltip.show {
+        .height-tooltip.show {
             opacity: 1;
         }
 
-        /* Responsif minimal */
-        @media (max-width: 640px) {
-            #sidebar {
-                min-width: 250px;
-            }
+        /* Info resize */
+        .resize-info {
+            text-align: center;
+            font-size: 0.6rem;
+            color: #64748b;
+            padding: 4px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
 
-    <!-- SIDEBAR DENGAN RESIZE HANDLE -->
+    <!-- SIDEBAR -->
     <div id="sidebar">
-        <div class="sidebar-header">
-            <h2>
-                📊 STATISTIK PER WILAYAH
-                <span class="badge-total" id="totalWilayahBadge">0</span>
-            </h2>
-            <p>2397 Wilayah | Tarik garis biru untuk mengubah lebar</p>
+        <!-- AREA ATAS ( bisa diatur tingginya via splitter ) -->
+        <div class="sidebar-top" id="sidebarTop">
+            <div class="sidebar-header">
+                <h2>
+                    📊 STATISTIK PER WILAYAH
+                    <span class="badge-total" id="totalWilayahBadge">0</span>
+                </h2>
+                <p>2397 Wilayah | Tarik garis biru untuk mengatur tinggi list</p>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="🔍 Cari nama RT / Dusun ..." autocomplete="off">
+                <input type="text" id="searchIdsls" placeholder="🆔 Cari ID Wilayah (SLS)">
+                <select id="filterKategori">
+                    <option value="">📌 Semua Kategori</option>
+                    <option value="Perkebunan">🌿 Perkebunan</option>
+                    <option value="Sawah">🌾 Sawah / Pertanian</option>
+                    <option value="Kebun">🍃 Kebun / Ladang</option>
+                    <option value="Pemukiman">🏘️ Pemukiman</option>
+                </select>
+                <div class="resize-info">⬇️ Tarik garis biru di bawah ini ⬇️</div>
+            </div>
         </div>
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 Cari nama RT / Dusun ..." autocomplete="off">
-            <input type="text" id="searchIdsls" placeholder="🆔 Cari ID Wilayah (SLS)">
-            <select id="filterKategori">
-                <option value="">📌 Semua Kategori</option>
-                <option value="Perkebunan">🌿 Perkebunan</option>
-                <option value="Sawah">🌾 Sawah / Pertanian</option>
-                <option value="Kebun">🍃 Kebun / Ladang</option>
-                <option value="Pemukiman">🏘️ Pemukiman</option>
-            </select>
-        </div>
+
+        <!-- SPLITTER VERTICAL (GARIS PENARIK) -->
+        <div class="splitter" id="verticalSplitter"></div>
+
+        <!-- AREA BAWAH (LIST WILAYAH) - Bisa di-resize tingginya -->
         <div id="dataList">
             <div style="text-align:center; padding:40px;">📡 Memuat data wilayah...</div>
         </div>
-        
-        <!-- Handle resize (garis penarik) -->
-        <div class="resize-handle" id="resizeHandle"></div>
     </div>
 
-    <!-- Indikator visual saat resize -->
-    <div class="resize-indicator" id="resizeIndicator"></div>
+    <!-- Indikator drag vertikal -->
+    <div class="resize-indicator-v" id="resizeIndicatorV"></div>
     
-    <!-- Tooltip lebar -->
-    <div class="width-tooltip" id="widthTooltip"></div>
+    <!-- Tooltip tinggi -->
+    <div class="height-tooltip" id="heightTooltip"></div>
 
     <!-- PETA -->
     <div id="map"></div>
@@ -298,7 +298,7 @@
     
     <script>
         // ============================================================
-        // DATA WILAYAH (Contoh dari dashboard)
+        // DATA WILAYAH (Contoh)
         // ============================================================
         const wilayahData = [
             { id: "16010520010001", nama: "RT 01 DUSUN 1", kecamatan: "LENGKITI", desa: "BANDAR JAYA", usaha: 0, kategori: "Pemukiman", lat: -4.395, lng: 103.922 },
@@ -315,7 +315,9 @@
             { id: "16010700010001", nama: "RT 01 DUSUN 1", kecamatan: "SOSOH BUAY RAYAP", desa: "NEGERI SINDANG", usaha: 0, kategori: "Pemukiman", lat: -4.120, lng: 104.060 },
             { id: "16010700011001", nama: "KEBUN KARET", kecamatan: "SOSOH BUAY RAYAP", desa: "NEGERI SINDANG", usaha: 0, kategori: "Perkebunan", lat: -4.115, lng: 104.065 },
             { id: "16010800080001", nama: "RT 001 DUSUN I", kecamatan: "PENGANDONAN", desa: "GUNUNG MERAKSA", usaha: 0, kategori: "Pemukiman", lat: -4.040, lng: 104.120 },
-            { id: "16010800081001", nama: "SAWAH DAN HUTAN", kecamatan: "PENGANDONAN", desa: "GUNUNG MERAKSA", usaha: 0, kategori: "Sawah", lat: -4.035, lng: 104.125 }
+            { id: "16010800081001", nama: "SAWAH DAN HUTAN", kecamatan: "PENGANDONAN", desa: "GUNUNG MERAKSA", usaha: 0, kategori: "Sawah", lat: -4.035, lng: 104.125 },
+            { id: "16010800100001", nama: "RT 001 DUSUN I", kecamatan: "PENGANDONAN", desa: "TANJUNG PURA", usaha: 0, kategori: "Pemukiman", lat: -4.045, lng: 104.130 },
+            { id: "16010810110001", nama: "RT 01 DUSUN 1", kecamatan: "SEMIDANG AJI", desa: "TUBOHAN", usaha: 0, kategori: "Pemukiman", lat: -4.180, lng: 104.085 }
         ];
 
         // Tambahkan lokasi
@@ -355,7 +357,7 @@
             totalBadge.innerText = data.length;
             
             if (data.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:40px;">🔍 Tidak ada wilayah</div>';
+                container.innerHTML = '<div style="text-align:center; padding:40px;">🔍 Tidak ada wilayah yang cocok</div>';
                 updateMarkers([]);
                 return;
             }
@@ -421,92 +423,86 @@
         
         renderWilayah(wilayahData);
 
-        // ========== FITUR RESIZE SIDEBAR (TARIK KE KANAN/KIRI) ==========
-        const sidebar = document.getElementById('sidebar');
-        const resizeHandle = document.getElementById('resizeHandle');
-        const resizeIndicator = document.getElementById('resizeIndicator');
-        const widthTooltip = document.getElementById('widthTooltip');
+        // ========== FITUR RESIZE VERTIKAL (TARIK KE BAWAH/ATAS) ==========
+        const sidebarTop = document.getElementById('sidebarTop');
+        const dataList = document.getElementById('dataList');
+        const splitter = document.getElementById('verticalSplitter');
+        const resizeIndicatorV = document.getElementById('resizeIndicatorV');
+        const heightTooltip = document.getElementById('heightTooltip');
         
-        let isResizing = false;
-        let startX = 0;
-        let startWidth = 0;
+        let isResizingV = false;
+        let startY = 0;
+        let startTopHeight = 0;
         
-        resizeHandle.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            startX = e.clientX;
-            startWidth = sidebar.offsetWidth;
+        splitter.addEventListener('mousedown', (e) => {
+            isResizingV = true;
+            startY = e.clientY;
+            startTopHeight = sidebarTop.offsetHeight;
             
             // Tampilkan indikator
-            resizeIndicator.style.display = 'block';
-            resizeIndicator.style.left = sidebar.offsetWidth + 'px';
+            resizeIndicatorV.style.display = 'block';
+            resizeIndicatorV.style.top = sidebarTop.offsetHeight + 'px';
             
             // Ganti cursor
-            document.body.style.cursor = 'ew-resize';
+            document.body.style.cursor = 'ns-resize';
             document.body.style.userSelect = 'none';
             
             e.preventDefault();
         });
         
         document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
+            if (!isResizingV) return;
             
-            // Hitung lebar baru
-            const deltaX = e.clientX - startX;
-            let newWidth = startWidth + deltaX;
+            // Hitung tinggi baru untuk area atas
+            const deltaY = e.clientY - startY;
+            let newTopHeight = startTopHeight + deltaY;
             
-            // Batasi lebar minimum dan maksimum (280px - 600px)
-            newWidth = Math.min(600, Math.max(280, newWidth));
+            // Batasi tinggi area atas (min 150px, max 350px)
+            newTopHeight = Math.min(350, Math.max(150, newTopHeight));
             
             // Update indikator posisi
-            resizeIndicator.style.left = newWidth + 'px';
+            resizeIndicatorV.style.top = newTopHeight + 'px';
             
-            // Tampilkan tooltip lebar
-            widthTooltip.innerText = `Lebar: ${newWidth}px`;
-            widthTooltip.classList.add('show');
+            // Tampilkan tooltip
+            const listHeight = window.innerHeight - newTopHeight - splitter.offsetHeight;
+            heightTooltip.innerText = `📋 Daftar wilayah: ${Math.round(listHeight)}px`;
+            heightTooltip.classList.add('show');
             
-            // Hilangkan tooltip setelah 1 detik tidak gerak (opsional)
-            clearTimeout(window.tooltipTimeout);
-            window.tooltipTimeout = setTimeout(() => {
-                widthTooltip.classList.remove('show');
-            }, 800);
+            clearTimeout(window.vTooltipTimeout);
+            window.vTooltipTimeout = setTimeout(() => {
+                heightTooltip.classList.remove('show');
+            }, 500);
         });
         
         document.addEventListener('mouseup', (e) => {
-            if (!isResizing) return;
+            if (!isResizingV) return;
             
-            // Hitung lebar akhir
-            const deltaX = e.clientX - startX;
-            let finalWidth = startWidth + deltaX;
-            finalWidth = Math.min(600, Math.max(280, finalWidth));
+            // Hitung tinggi akhir
+            const deltaY = e.clientY - startY;
+            let finalTopHeight = startTopHeight + deltaY;
+            finalTopHeight = Math.min(350, Math.max(150, finalTopHeight));
             
-            // Terapkan lebar ke sidebar
-            sidebar.style.width = finalWidth + 'px';
+            // Terapkan tinggi baru ke area atas
+            sidebarTop.style.height = finalTopHeight + 'px';
             
             // Sembunyikan indikator
-            resizeIndicator.style.display = 'none';
-            widthTooltip.classList.remove('show');
+            resizeIndicatorV.style.display = 'none';
+            heightTooltip.classList.remove('show');
             
             // Reset cursor
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
             
-            isResizing = false;
+            isResizingV = false;
             
-            // Trigger resize event untuk peta (Leaflet akan otomatis menyesuaikan)
+            // Peta tetap stabil
             setTimeout(() => {
                 map.invalidateSize();
             }, 100);
         });
         
-        // Prevent mouse leave saat resize
-        document.addEventListener('mouseleave', () => {
-            if (isResizing) {
-                isResizing = false;
-                resizeIndicator.style.display = 'none';
-                document.body.style.cursor = '';
-                widthTooltip.classList.remove('show');
-            }
-        });
+        // Set tinggi awal area atas (biarkan fleksibel)
+        sidebarTop.style.height = 'auto';
         
         // Tambahkan marker kecamatan
         const kecamatanPoints = [
@@ -518,7 +514,7 @@
             L.marker([point.lat, point.lng]).addTo(map).bindPopup(`<b>${point.name}</b>`);
         });
         
-        console.log('✅ Sidebar resizeable siap! Tarik garis biru di tepi kanan sidebar.');
+        console.log('✅ Fitur tarik vertikal siap! Tarik garis biru di tengah sidebar untuk mengatur tinggi daftar wilayah.');
     </script>
 </body>
 </html>
